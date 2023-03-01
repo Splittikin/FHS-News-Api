@@ -1,0 +1,29 @@
+[
+	{
+    	"cardType": 0,
+    	"articleId": 1,
+    	"articleThumbnail": "http://10.0.2.2:3000/article.jpg",
+    	"postedTime": "1671469200000",
+    	"timeUntil": "0",
+    	"topperText": "Fundraiser",
+    	"topperIcon": "http://10.0.2.2:3000/NOOO.gif",
+    	"author": "",
+    	"tags": [],
+    	"headline": "Holiday Gift Wrapping",
+    	"subtitle": "For the Leukemia and Lymphoma Society",
+    	"text": "On December 19th at door 19, remember to drop off 5-10 gifts to be wrapped for a donation via cash, check, or CashApp. You may bring your own wrapping paper if it is specific to your kid. All proceeds go to the Leukemia and Lymphoma Society"
+	},{
+    	"cardType": 0,
+    	"articleId": 2,
+    	"articleThumbnail": "http://10.0.2.2:3000/bruh.png",
+    	"postedTime": "1671469200000",
+    	"timeUntil": "0",
+    	"topperText": "Fundraiser",
+    	"topperIcon": "http://10.0.2.2:3000/article.jpg",
+    	"author": "",
+    	"tags": [],
+    	"headline": "Holiday Gift Wrapping",
+    	"subtitle": "For the Leukemia and Lymphoma Society",
+    	"text": "On December 19th at door 19, remember to drop off 5-10 gifts to be wrapped for a donation via cash, check, or CashApp. You may bring your own wrapping paper if it is specific to your kid. All proceeds go to the Leukemia and Lymphoma Society"
+	}
+]

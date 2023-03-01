@@ -1,0 +1,10 @@
+{
+	"itemType": "Alert",
+	"text": "We're having a Bruh moment!",
+	"background_color": "#FFFF00",
+	"foreground_color": "#000000",
+	"links": {
+		"GEt tater'd": "https://po.ta.to/",
+		"Enriching Students": "https://student.enrichingstudents.com/dashboard"
+	}
+}
