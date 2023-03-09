@@ -28,7 +28,7 @@ const server = http.createServer((req, res) => {
             } else if (request_segments[2] === 'home') {
                 loadHome(request_arguments, res)
             } else if (request_segments[2] === 'club') {
-                loadClub(req, res)
+                getClub(req, res)
             } else if (request_segments[2] === 'search_date') {
                 search_date(request_arguments, res)
             } else if (request_segments[2] === 'weather') {
@@ -67,19 +67,6 @@ async function returnError(errorCode, res) {
             fs.createReadStream('./error_pages/' + errorCode + '.html').pipe(res)
         } else {
             fs.createReadStream('./error_pages/generic.html').pipe(res)
-        }
-    })
-}
-
-async function writeHome(returnArticles, res) { // THIS SUCKS
-    let newJson = await Promise.all(returnArticles)
-    const filePath = path.resolve('./generated/home.json')
-    fs.writeFile(filePath, JSON.stringify(newJson, null, 2), function (err) {
-        if (err) {
-            throw err
-        } else {
-            res.statusCode = 200
-            fs.createReadStream(filePath).pipe(res)
         }
     })
 }
@@ -163,6 +150,18 @@ async function loadHome(arguments, res) {
         writeHome(returnData, res)
     }) // readdir
 }
+async function writeHome(returnArticles, res) { // Separated into a separate function so that the server will wait until all the promises resolve before continuing
+    let newJson = await Promise.all(returnArticles)
+    const filePath = path.resolve('./generated/home.json')
+    fs.writeFile(filePath, JSON.stringify(newJson, null, 2), function (err) {
+        if (err) {
+            throw err
+        } else {
+            res.statusCode = 200
+            fs.createReadStream(filePath).pipe(res)
+        }
+    })
+}
 
 async function getWeather(res) {
     console.log("getting weather!!!")
@@ -174,6 +173,18 @@ async function getWeather(res) {
         } else {
             weatherReturn = JSON.parse(data)
             writeWeather(weatherReturn, res)
+        }
+    })
+}
+async function writeWeather(returnWeather, res) { // Separated into a separate function so that the server will wait until all the promises resolve before continuing
+    console.log(returnWeather)
+    const filePath = path.resolve('./generated/weather.json')
+    fs.writeFile(filePath, JSON.stringify(returnWeather, null, 2), function (err) {
+        if (err) {
+            throw err
+        } else {
+            res.statusCode = 200
+            fs.createReadStream(filePath).pipe(res)
         }
     })
 }
@@ -212,8 +223,7 @@ async function loadClubs(res) {
     }) // readdir
 
 }
-
-async function writeClubs(returnClubs, res) { // THIS STILL SUCKS
+async function writeClubs(returnClubs, res) { // Separated into a separate function so that the server will wait until all the promises resolve before continuing
     let newJson = await Promise.all(returnClubs)
     const filePath = path.resolve('./generated/clubs.json')
     fs.writeFile(filePath, JSON.stringify(newJson, null, 2), function (err) {
@@ -224,46 +234,6 @@ async function writeClubs(returnClubs, res) { // THIS STILL SUCKS
             fs.createReadStream(filePath).pipe(res)
         }
     })
-}
-
-async function writeWeather(returnWeather, res) { // THIS STILL SUCKS
-    console.log(returnWeather)
-    const filePath = path.resolve('./generated/weather.json')
-    fs.writeFile(filePath, JSON.stringify(returnWeather, null, 2), function (err) {
-        if (err) {
-            throw err
-        } else {
-            res.statusCode = 200
-            fs.createReadStream(filePath).pipe(res)
-        }
-    })
-}
-
-async function loadClub(req, res) {
-    const requestedClub = parseInt(req.url.split("/")[3], 10)
-    const clubPath = path.resolve('./clubs/' + requestedClub)
-    console.log("BRUH! request for article " + requestedClub + " which is at " + clubPath)
-    fs.exists(path.resolve(clubPath + "/club.json"), (exists) => {
-        if (!exists) {
-            returnError(404, res)
-        } else {
-            const jsonPath = path.resolve(clubPath + "/club.json")
-            fs.readFile(jsonPath, 'utf8', (err, data) => {
-                if (err) {
-                    throw err
-                }
-                let thisClub = resolveAttachments(JSON.parse(data))
-                const outPath = path.resolve('./generated/club_' + thisClub["clubId"] + '.json')
-                fs.writeFile(outPath, JSON.stringify(thisClub, null, 2), function (err) {
-                    if (err) {
-                        throw err
-                    } else {
-                        fs.createReadStream(outPath).pipe(res)
-                    }
-                }) // fs.writeFile
-            })
-        } // if (!exists)
-    }) // fs.exists if club exists
 }
 
 async function search_date(queries, res) {
@@ -308,8 +278,7 @@ async function search_date(queries, res) {
         }) // readdir
     }
 }
-
-async function filterAndWriteDateSearchResult(workingArticles, returnArticles, res) { // THIS ALSO SUCKS TODO: MAKE THE FILENAME DIFFER BASED ON SEARCH BEING MADE
+async function filterAndWriteDateSearchResult(workingArticles, returnArticles, res) { // Separated into a separate function so that the server will wait until all the promises resolve before continuing
     let allJson = await Promise.all(workingArticles)
     let filteredJson = returnArticles.sort(function (a, b) {
         return a["postedTime"] < b["postedTime"]
@@ -353,4 +322,31 @@ async function getArticle(req, res) {
             })
         } // if (!exists)
     }) // fs.exists if article exists
+}
+
+async function getClub(req, res) {
+    const requestedClub = parseInt(req.url.split("/")[3], 10)
+    const clubPath = path.resolve('./clubs/' + requestedClub)
+    console.log("BRUH! request for article " + requestedClub + " which is at " + clubPath)
+    fs.exists(path.resolve(clubPath + "/club.json"), (exists) => {
+        if (!exists) {
+            returnError(404, res)
+        } else {
+            const jsonPath = path.resolve(clubPath + "/club.json")
+            fs.readFile(jsonPath, 'utf8', (err, data) => {
+                if (err) {
+                    throw err
+                }
+                let thisClub = resolveAttachments(JSON.parse(data))
+                const outPath = path.resolve('./generated/club_' + thisClub["clubId"] + '.json')
+                fs.writeFile(outPath, JSON.stringify(thisClub, null, 2), function (err) {
+                    if (err) {
+                        throw err
+                    } else {
+                        fs.createReadStream(outPath).pipe(res)
+                    }
+                }) // fs.writeFile
+            })
+        } // if (!exists)
+    }) // fs.exists if club exists
 }
