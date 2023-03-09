@@ -74,11 +74,15 @@ async function returnError(errorCode, res) {
 async function loadHome(arguments, res) {
     let articlesNeeded = 3
     let articlesOffset = 0
+    let includeExtras = true
     if (arguments["quantity"] != null) {
         articlesNeeded = arguments["quantity"]
     }
     if (arguments["position"] != null) {
         articlesOffset = arguments["position"]
+    }
+    if (arguments["extras"] === false) {
+        includeExtras = false
     }
     console.log("BRUH! i need " + articlesNeeded + " articles here!!!")
 
@@ -100,10 +104,26 @@ async function loadHome(arguments, res) {
          */
 
         let returnData = []
-        // Get alerts and add them to the top of the feed
-        fs.readdirSync('./alerts/').sort().reverse().forEach(file => {
-            let thisAlert = new Promise((resolve, reject) => {
-                fs.readFile('./alerts/' + file, 'utf8', (err, data) => {
+        let extrasLength = 0
+        if (includeExtras) {
+            // Get alerts and add them to the top of the feed
+            fs.readdirSync('./alerts/').sort().reverse().forEach(file => {
+                let thisAlert = new Promise((resolve, reject) => {
+                    fs.readFile('./alerts/' + file, 'utf8', (err, data) => {
+                        if (err) {
+                            reject(err)
+                        } else {
+                            resolve(JSON.parse(data))
+                        }
+                    })
+                })
+                extrasLength += 1
+                returnData.unshift(thisAlert)
+            })
+
+            // Get weather and add it to the top of the feed
+            let thisWeather = new Promise((resolve, reject) => {
+                fs.readFile('./weather/current.json', 'utf8', (err, data) => {
                     if (err) {
                         reject(err)
                     } else {
@@ -111,25 +131,14 @@ async function loadHome(arguments, res) {
                     }
                 })
             })
-            returnData.unshift(thisAlert)
-        })
-
-        // Get weather and add it to the top of the feed
-        let thisWeather = new Promise((resolve, reject) => {
-            fs.readFile('./weather/current.json', 'utf8', (err, data) => {
-                if (err) {
-                    reject(err)
-                } else {
-                    resolve(JSON.parse(data))
-                }
-            })
-        })
-        returnData.unshift(thisWeather)
+            extrasLength += 1
+            returnData.unshift(thisWeather)
+        }
 
         // Last, get the articles and add them to the bottom
         let folders = files.filter(dirent => fs.lstatSync(path.resolve('./articles/' + dirent)).isDirectory())
         folders = folders.sort()
-        let articlesFound = folders.slice(articlesOffset, articlesNeeded)
+        let articlesFound = folders
         for (let val of articlesFound) {
             const jsonPath = path.resolve('./articles/' + val + '/article.json')
             console.log(jsonPath)
@@ -147,6 +156,7 @@ async function loadHome(arguments, res) {
             })
             returnData.push(thisArticle)
         }
+        returnData = returnData.slice(articlesOffset, articlesOffset+articlesNeeded)
         writeHome(returnData, res)
     }) // readdir
 }
