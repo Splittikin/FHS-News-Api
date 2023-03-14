@@ -7,6 +7,15 @@ const url = require('url')
 const hostname = config.hostname
 const port = config.port
 
+// Check if the ./generated folder exists, and if not, make one
+if (!fs.existsSync(path.resolve("./generated"))) {
+    fs.mkdir(path.resolve("./generated"), function (e) {
+        if (e) {
+            throw e
+        }
+    })
+}
+
 const server = http.createServer((req, res) => {
     console.log('Request for ' + req.url + ' by method ' + req.method)
 
@@ -156,10 +165,11 @@ async function loadHome(arguments, res) {
             })
             returnData.push(thisArticle)
         }
-        returnData = returnData.slice(articlesOffset, articlesOffset+articlesNeeded)
+        returnData = returnData.slice(articlesOffset, articlesOffset + articlesNeeded)
         writeHome(returnData, res)
     }) // readdir
 }
+
 async function writeHome(returnArticles, res) { // Separated into a separate function so that the server will wait until all the promises resolve before continuing
     let newJson = await Promise.all(returnArticles)
     const filePath = path.resolve('./generated/home.json')
@@ -186,6 +196,7 @@ async function getWeather(res) {
         }
     })
 }
+
 async function writeWeather(returnWeather, res) { // Separated into a separate function so that the server will wait until all the promises resolve before continuing
     console.log(returnWeather)
     const filePath = path.resolve('./generated/weather.json')
@@ -233,6 +244,7 @@ async function loadClubs(res) {
     }) // readdir
 
 }
+
 async function writeClubs(returnClubs, res) { // Separated into a separate function so that the server will wait until all the promises resolve before continuing
     let newJson = await Promise.all(returnClubs)
     const filePath = path.resolve('./generated/clubs.json')
@@ -288,6 +300,7 @@ async function search_date(queries, res) {
         }) // readdir
     }
 }
+
 async function filterAndWriteDateSearchResult(workingArticles, returnArticles, res) { // Separated into a separate function so that the server will wait until all the promises resolve before continuing
     let allJson = await Promise.all(workingArticles)
     let filteredJson = returnArticles.sort(function (a, b) {
