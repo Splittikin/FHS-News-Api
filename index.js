@@ -23,11 +23,12 @@ const server = http.createServer((req, res) => {
         const request = url.parse(req.url, true)
         const request_segments = request.pathname.split('/')
         const request_arguments = request.query
-        console.log(request_segments)
 
         if (request_segments[1] === '') {
-            res.statusCode = 200
-            fs.createReadStream('./public/index.html').pipe(res)
+            res.writeHead(302, {
+                'Location': 'https://splittikin.github.io/FHS-News-Docs/'
+            })
+            res.end()
         } else if (request_segments[1] === 'favicon.ico') {
             res.statusCode = 200
             fs.createReadStream(path.resolve('./public/bruh.png'))
