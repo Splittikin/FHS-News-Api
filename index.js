@@ -34,7 +34,7 @@ const server = http.createServer((req, res) => {
             fs.createReadStream(path.resolve('./public/bruh.png'))
         } else if (request_segments[1] === 'api') {
             if (request_segments[2] === 'article') {
-                getArticle(req, res)
+                getArticle(request_arguments, req, res)
             } else if (request_segments[2] === 'home') {
                 loadHome(request_arguments, res)
             } else if (request_segments[2] === 'feedClubs') {
@@ -330,8 +330,13 @@ async function filterAndWriteDateSearchResult(workingArticles, returnArticles, r
     })
 }
 
-async function getArticle(req, res) {
-    const requestedArticle = parseInt(req.url.split("/")[3], 10)
+async function getArticle(arguments, req, res) {
+    let requestedArticle
+    if (arguments["id"] != null) {
+        requestedArticle = arguments["id"]
+    } else {
+        requestedArticle = parseInt(req.url.split("/")[3], 10)
+    }
     const articlePath = path.resolve('./articles/' + requestedArticle)
     console.log("BRUH! request for article " + requestedArticle + " which is at " + articlePath)
     const jsonPath = path.resolve(articlePath + "/article.json")
