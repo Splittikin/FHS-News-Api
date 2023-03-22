@@ -40,7 +40,7 @@ const server = http.createServer((req, res) => {
             } else if (request_segments[2] === 'feedClubs') {
                 loadClubs(request_arguments, res)
             } else if (request_segments[2] === 'club') {
-                getClub(req, res)
+                getClub(request_arguments, req, res)
             } else if (request_segments[2] === 'search_date') {
                 search_date(request_arguments, res)
             } else if (request_segments[2] === 'weather') {
@@ -362,8 +362,13 @@ async function getArticle(arguments, req, res) {
     }) // fs.exists if article exists
 }
 
-async function getClub(req, res) {
-    const requestedClub = parseInt(req.url.split("/")[3], 10)
+async function getClub(arguments, req, res) {
+    let requestedClub
+    if (arguments["id"] != null) {
+        requestedClub = arguments["id"]
+    } else {
+        requestedClub = parseInt(req.url.split("/")[3], 10)
+    }
     const clubPath = path.resolve('./clubs/' + requestedClub)
     console.log("BRUH! request for article " + requestedClub + " which is at " + clubPath)
     fs.exists(path.resolve(clubPath + "/club.json"), (exists) => {
