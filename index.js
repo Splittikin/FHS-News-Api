@@ -37,6 +37,8 @@ const server = http.createServer((req, res) => {
                 getArticle(req, res)
             } else if (request_segments[2] === 'home') {
                 loadHome(request_arguments, res)
+            } else if (request_segments[2] === 'feedClubs') {
+                loadClubs(request_arguments, res)
             } else if (request_segments[2] === 'club') {
                 getClub(req, res)
             } else if (request_segments[2] === 'search_date') {
@@ -211,21 +213,28 @@ async function writeWeather(returnWeather, res) { // Separated into a separate f
     })
 }
 
-async function loadClubs(res) {
-    const clubsNeeded = 3
+async function loadClubs(arguments, res) {
+    let clubsNeeded = 3
+    let clubsOffset = 0
+    if (arguments["quantity"] != null) {
+        clubsNeeded = parseInt(arguments["quantity"], 10)
+    }
+    if (arguments["position"] != null) {
+        clubsOffset = parseInt(arguments["position"], 10)
+    }
     fs.readdir('./clubs', (err, files) => {
         if (err) {
             throw err
         }
         let folders = files.filter(dirent => fs.lstatSync(path.resolve('./clubs/' + dirent)).isDirectory())
-        console.log("BRUH! i need " + clubsNeeded + " clubs here!!!")
+        console.log("BRUH! i need " + clubsNeeded + " clubs here starting from position " + clubsOffset + "!!!")
+        console.log(`Clubs position ${clubsOffset} through ${clubsNeeded + clubsOffset}`)
         folders.sort(function (a, b) {
             return a - b
         })
         let returnClubs = []
         for (let val of folders) {
             const jsonPath = path.resolve('./clubs/' + val + '/club.json')
-            console.log(jsonPath)
             let thisClub = new Promise((resolve, reject) => {
                 let thisClubReturn
                 fs.readFile(jsonPath, 'utf8', (err, data) => {
@@ -234,13 +243,13 @@ async function loadClubs(res) {
                     } else {
                         thisClubReturn = JSON.parse(data)
                         thisClubReturn = resolveAttachments(thisClubReturn)
-                        console.log(thisClubReturn)
                         resolve(thisClubReturn)
                     }
                 })
             })
             returnClubs.push(thisClub)
         }
+        returnClubs = returnClubs.slice(clubsOffset, clubsNeeded + clubsOffset)
         writeClubs(returnClubs, res)
     }) // readdir
 
