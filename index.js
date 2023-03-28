@@ -157,22 +157,14 @@ async function loadHome(arguments, res) {
 	for (let val of articlesFound) {
 		const jsonPath = path.resolve('./articles/' + val + '/article.json')
 		console.log(jsonPath)
-		let thisArticle = new Promise((resolve, reject) => {
+		let thisArticle = new Promise((resolve, _) => {
 			resolve(processItem(JSON.parse(fs.readFileSync(jsonPath, 'utf8'))))
 		})
 		returnData.push(thisArticle)
 	}
 	returnData = returnData.slice(articlesOffset, articlesOffset + articlesNeeded)
 	await Promise.all(returnData).then(returnArticles => {
-		const filePath = path.resolve('./generated/home.json')
-		fs.writeFile(filePath, JSON.stringify(returnArticles, null, 2), function (err) {
-			if (err) {
-				throw err
-			} else {
-				res.statusCode = 200
-				fs.createReadStream(filePath).pipe(res)
-			}
-		})
+		res.json(returnArticles)
 	})
 }
 
@@ -193,14 +185,7 @@ async function getLunch(res) {
 
 			// blah blah blah
 
-			fs.writeFile('./generated/lunch.json', JSON.stringify(lunchReturn, null, 2), (err) => {
-				if (err) {
-					throw (err)
-				} else {
-					res.statusCode = 200
-					fs.createReadStream('./generated/lunch.json').pipe(res)
-				}
-			})
+			res.json(lunchReturn)
 		}
 	})
 }
@@ -239,15 +224,7 @@ async function loadClubs(arguments, res) {
 	}
 	returnClubs = returnClubs.slice(clubsOffset, clubsNeeded + clubsOffset)
 	await Promise.all(returnClubs).then(returnClubs => {
-		const filePath = path.resolve('./generated/clubs.json')
-		fs.writeFile(filePath, JSON.stringify(returnClubs, null, 2), function (err) {
-			if (err) {
-				throw err
-			} else {
-				res.statusCode = 200
-				fs.createReadStream(filePath).pipe(res)
-			}
-		})
+		res.json(returnClubs)
 	})
 }
 
@@ -289,19 +266,11 @@ async function search_date(queries, res) {
 			})
 			workingArticles.push(thisArticle)
 		}
-		await Promise.all(workingArticles).then(workingArticles => {
+		await Promise.all(workingArticles).then(_ => {
 			let filteredJson = returnArticles.sort(function (a, b) {
 				return a["postedTime"] - b["postedTime"]
 			})
-			const filePath = path.resolve('./generated/search_date.json')
-			fs.writeFile(filePath, JSON.stringify(filteredJson, null, 2), function (err) {
-				if (err) {
-					throw err
-				} else {
-					res.statusCode = 200
-					fs.createReadStream(filePath).pipe(res)
-				}
-			})
+			res.json(filteredJson)
 		})
 	}
 }
@@ -322,14 +291,7 @@ async function getArticle(arguments, req, res) {
 				throw err
 			}
 			const thisArticle = processItem(JSON.parse(data))
-			const outPath = path.resolve('./generated/article_' + thisArticle["articleId"] + '.json')
-			fs.writeFile(outPath, JSON.stringify(thisArticle, null, 2), function (err) {
-				if (err) {
-					throw err
-				} else {
-					fs.createReadStream(outPath).pipe(res)
-				}
-			}) // fs.writeFile
+			res.json(thisArticle)
 		})
 	} else {
 		await returnError(404, res)
@@ -353,14 +315,7 @@ async function getClub(arguments, req, res) {
 				throw err
 			}
 			let thisClub = processItem(JSON.parse(data))
-			const outPath = path.resolve('./generated/club_' + thisClub["clubId"] + '.json')
-			fs.writeFile(outPath, JSON.stringify(thisClub, null, 2), function (err) {
-				if (err) {
-					throw err
-				} else {
-					fs.createReadStream(outPath).pipe(res)
-				}
-			}) // fs.writeFile
+			res.json(thisClub)
 		})
 	} else {
 		await returnError(404, res)
