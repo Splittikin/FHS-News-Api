@@ -158,13 +158,7 @@ async function loadHome(arguments, res) {
 		const jsonPath = path.resolve('./articles/' + val + '/article.json')
 		console.log(jsonPath)
 		let thisArticle = new Promise((resolve, reject) => {
-			resolve(
-				processItem(
-					JSON.parse(
-						fs.readFileSync(jsonPath, 'utf8')
-					)
-				)
-			)
+			resolve(processItem(JSON.parse(fs.readFileSync(jsonPath, 'utf8'))))
 		})
 		returnData.push(thisArticle)
 	}
@@ -196,6 +190,9 @@ async function getLunch(res) {
 			throw (err)
 		} else {
 			let lunchReturn = JSON.parse(data)
+
+			// blah blah blah
+
 			fs.writeFile('./generated/lunch.json', JSON.stringify(lunchReturn, null, 2), (err) => {
 				if (err) {
 					throw (err)
@@ -217,49 +214,40 @@ async function loadClubs(arguments, res) {
 	if (arguments["position"] != null) {
 		clubsOffset = parseInt(arguments["position"], 10)
 	}
-	fs.readdir('./clubs', (err, files) => {
-		if (err) {
-			throw err
-		}
-		let folders = files.filter(dirent => fs.lstatSync(path.resolve('./clubs/' + dirent)).isDirectory())
-		console.log("BRUH! i need " + clubsNeeded + " clubs here starting from position " + clubsOffset + "!!!")
-		console.log(`Clubs position ${clubsOffset} through ${clubsNeeded + clubsOffset}`)
-		folders.sort(function (a, b) {
-			return a - b
-		})
-		let returnClubs = []
-		for (let val of folders) {
-			const jsonPath = path.resolve('./clubs/' + val + '/club.json')
-			let thisClub = new Promise((resolve, reject) => {
-				let thisClubReturn
-				fs.readFile(jsonPath, 'utf8', (err, data) => {
-					if (err) {
-						reject(err)
-					} else {
-						thisClubReturn = JSON.parse(data)
-						thisClubReturn = processItem(thisClubReturn)
-						resolve(thisClubReturn)
-					}
-				})
+	let folders = fs.readdirSync('./clubs').filter(dirent => fs.lstatSync(path.resolve('./clubs/' + dirent)).isDirectory())
+	console.log("BRUH! i need " + clubsNeeded + " clubs here starting from position " + clubsOffset + "!!!")
+	console.log(`Clubs position ${clubsOffset} through ${clubsNeeded + clubsOffset}`)
+	folders.sort(function (a, b) {
+		return a - b
+	})
+	let returnClubs = []
+	for (let val of folders) {
+		const jsonPath = path.resolve('./clubs/' + val + '/club.json')
+		let thisClub = new Promise((resolve, reject) => {
+			let thisClubReturn
+			fs.readFile(jsonPath, 'utf8', (err, data) => {
+				if (err) {
+					reject(err)
+				} else {
+					thisClubReturn = JSON.parse(data)
+					thisClubReturn = processItem(thisClubReturn)
+					resolve(thisClubReturn)
+				}
 			})
-			returnClubs.push(thisClub)
-		}
-		returnClubs = returnClubs.slice(clubsOffset, clubsNeeded + clubsOffset)
-		writeClubs(returnClubs, res)
-	}) // readdir
-
-}
-
-async function writeClubs(returnClubs, res) { // Separated into a separate function so that the server will wait until all the promises resolve before continuing
-	let newJson = await Promise.all(returnClubs)
-	const filePath = path.resolve('./generated/clubs.json')
-	fs.writeFile(filePath, JSON.stringify(newJson, null, 2), function (err) {
-		if (err) {
-			throw err
-		} else {
-			res.statusCode = 200
-			fs.createReadStream(filePath).pipe(res)
-		}
+		})
+		returnClubs.push(thisClub)
+	}
+	returnClubs = returnClubs.slice(clubsOffset, clubsNeeded + clubsOffset)
+	await Promise.all(returnClubs).then(returnClubs => {
+		const filePath = path.resolve('./generated/clubs.json')
+		fs.writeFile(filePath, JSON.stringify(returnClubs, null, 2), function (err) {
+			if (err) {
+				throw err
+			} else {
+				res.statusCode = 200
+				fs.createReadStream(filePath).pipe(res)
+			}
+		})
 	})
 }
 
@@ -278,55 +266,44 @@ async function search_date(queries, res) {
 		if (!range_end) {
 			range_end = range_start + 86400000 // 24 hours in milliseconds
 		}
-		fs.readdir('./articles', (err, files) => {
-			if (err) {
-				throw err
-			}
-			let folders = files.filter(dirent => fs.lstatSync(path.resolve('./articles/' + dirent)).isDirectory())
-			let workingArticles = []
-			let returnArticles = []
-			for (let val of folders) {
-				const jsonPath = path.resolve('./articles/' + val + '/article.json')
-				console.log(jsonPath)
-				let thisArticle = new Promise((resolve, reject) => {
-					let thisArticleReturn
-					fs.readFile(jsonPath, 'utf8', (err, data) => {
-						if (err) {
-							reject(err)
-						} else {
-							thisArticleReturn = JSON.parse(data)
-							thisArticleReturn = processItem(thisArticleReturn)
-							if (thisArticleReturn["postedTime"] >= range_start && thisArticleReturn["postedTime"] <= range_end) {
-								returnArticles.push(thisArticleReturn)
-							}
-							resolve(thisArticleReturn)
+		let folders = fs.readdirSync('./articles').filter(dirent => fs.lstatSync(path.resolve('./articles/' + dirent)).isDirectory())
+		let workingArticles = []
+		let returnArticles = []
+		for (let val of folders) {
+			const jsonPath = path.resolve('./articles/' + val + '/article.json')
+			console.log(jsonPath)
+			let thisArticle = new Promise((resolve, reject) => {
+				let thisArticleReturn
+				fs.readFile(jsonPath, 'utf8', (err, data) => {
+					if (err) {
+						reject(err)
+					} else {
+						thisArticleReturn = JSON.parse(data)
+						thisArticleReturn = processItem(thisArticleReturn)
+						if (thisArticleReturn["postedTime"] >= range_start && thisArticleReturn["postedTime"] <= range_end) {
+							returnArticles.push(thisArticleReturn)
 						}
-					})
+						resolve(thisArticleReturn)
+					}
 				})
-				workingArticles.push(thisArticle)
-			}
-			filterAndWriteDateSearchResult(workingArticles, returnArticles, res)
-		}) // readdir
-	}
-}
-
-async function filterAndWriteDateSearchResult(workingArticles, returnArticles, res) { // Separated into a separate function so that the server will wait until all the promises resolve before continuing
-	let allJson = await Promise.all(workingArticles)
-	let filteredJson = returnArticles.sort(function (a, b) {
-		return a["postedTime"] < b["postedTime"]
-	})
-	console.log(workingArticles)
-	console.log(returnArticles)
-	const filePath = path.resolve('./generated/search_date.json')
-	fs.writeFile(filePath, JSON.stringify(filteredJson, null, 2), function (err) {
-		if (err) {
-			throw err
-		} else {
-			res.statusCode = 200
-
-			fs.createReadStream(filePath).pipe(res)
+			})
+			workingArticles.push(thisArticle)
 		}
-	})
+		await Promise.all(workingArticles).then(workingArticles => {
+			let filteredJson = returnArticles.sort(function (a, b) {
+				return a["postedTime"] - b["postedTime"]
+			})
+			const filePath = path.resolve('./generated/search_date.json')
+			fs.writeFile(filePath, JSON.stringify(filteredJson, null, 2), function (err) {
+				if (err) {
+					throw err
+				} else {
+					res.statusCode = 200
+					fs.createReadStream(filePath).pipe(res)
+				}
+			})
+		})
+	}
 }
 
 async function getArticle(arguments, req, res) {
