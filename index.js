@@ -67,13 +67,13 @@ http://${hostname}:${port}/api/home`)
 })
 
 function processItem(item) {
-    if (item.itemType === "Club") {
-        item.clubThumbnail = config.attachments_url + "clubs/" + 0 + "/" + item.clubThumbnail
-    } else if (item.itemType === "Article") {
-        item.articleThumbnail = config.attachments_url + "articles/" + item["articleId"] + "/" + item.articleThumbnail
-        item.topperIcon = config.attachments_url + "articles/" + item["articleId"] + "/" + item.topperIcon
-    }
-    return item
+	if (item.itemType === "Club") {
+		item.clubThumbnail = config.attachments_url + "clubs/" + 0 + "/" + item.clubThumbnail
+	} else if (item.itemType === "Article") {
+		item.articleThumbnail = config.attachments_url + "articles/" + item["articleId"] + "/" + item.articleThumbnail
+		item.topperIcon = config.attachments_url + "articles/" + item["articleId"] + "/" + item.topperIcon
+	}
+	return item
 }
 
 async function returnError(errorCode, res) {
@@ -88,117 +88,97 @@ async function returnError(errorCode, res) {
 async function loadHome(arguments, res) {
 	let articlesNeeded = 5
 	let articlesOffset = 0
-	let includeExtras = true
 	if (arguments["quantity"] != null) {
 		articlesNeeded = arguments["quantity"]
 	}
 	if (arguments["position"] != null) {
 		articlesOffset = arguments["position"]
 	}
-	if (arguments["extras"] === false) {
-		includeExtras = false
-	}
 	console.log("BRUH! i need " + articlesNeeded + " articles here!!!")
 
-	fs.readdir('./articles', (err, files) => {
-		if (err) {
-			throw err
-		}
-		/* Order should be something like this:
-		Weather
-		Alert (Red/Silver)
-		Alert
-		Lunch
-		Articles
-		Articles
-		Articles
-		Articles
-		etc...
+	let files = fs.readdirSync('./articles')
+	/* Order should be something like this:
+	Weather
+	Alert (Red/Silver)
+	Alert
+	Lunch
+	Articles
+	Articles
+	Articles
+	Articles
+	etc...
 
-		Extras are grabbed in reverse order and added to the top of the list, so they appear in order.
-		 */
+	Extras are grabbed in reverse order and added to the top of the list, so they appear in order.
+	 */
 
-		let returnData = []
-		let extrasLength = 0
-		if (includeExtras) {
-			// Get lunch and add it to the top of the list
-			let thisLunch = new Promise((resolve, reject) => {
-				fs.readFile('./extras/lunch.json', 'utf8', (err, data) => {
-					if (err) {
-						reject(err)
-					} else {
-						resolve(JSON.parse(data))
-					}
-				})
+	let returnData = []
+	// Get lunch and add it to the top of the list
+	let thisLunch = new Promise((resolve, reject) => {
+		fs.readFile('./extras/lunch.json', 'utf8', (err, data) => {
+			if (err) {
+				reject(err)
+			} else {
+				resolve(JSON.parse(data))
+			}
+		})
+	})
+	returnData.unshift(thisLunch)
+
+	// Get alerts and add them to the top of the feed
+	fs.readdirSync('./alerts/').sort().reverse().forEach(file => {
+		let thisAlert = new Promise((resolve, reject) => {
+			fs.readFile('./alerts/' + file, 'utf8', (err, data) => {
+				if (err) {
+					reject(err)
+				} else {
+					resolve(JSON.parse(data))
+				}
 			})
-			extrasLength += 1
-			returnData.unshift(thisLunch)
+		})
+		returnData.unshift(thisAlert)
+	})
 
-			// Get alerts and add them to the top of the feed
-			fs.readdirSync('./alerts/').sort().reverse().forEach(file => {
-				let thisAlert = new Promise((resolve, reject) => {
-					fs.readFile('./alerts/' + file, 'utf8', (err, data) => {
-						if (err) {
-							reject(err)
-						} else {
-							resolve(JSON.parse(data))
-						}
-					})
-				})
-				extrasLength += 1
-				returnData.unshift(thisAlert)
-			})
+	// Get weather and add it to the top of the feed
+	let thisWeather = new Promise((resolve, reject) => {
+		fs.readFile('./extras/weather.json', 'utf8', (err, data) => {
+			if (err) {
+				reject(err)
+			} else {
+				resolve(JSON.parse(data))
+			}
+		})
+	})
+	returnData.unshift(thisWeather)
 
-			// Get weather and add it to the top of the feed
-			let thisWeather = new Promise((resolve, reject) => {
-				fs.readFile('./extras/weather.json', 'utf8', (err, data) => {
-					if (err) {
-						reject(err)
-					} else {
-						resolve(JSON.parse(data))
-					}
-				})
-			})
-			extrasLength += 1
-			returnData.unshift(thisWeather)
-		}
-
-		// Last, get the articles and add them to the bottom
-		let folders = files.filter(dirent => fs.lstatSync(path.resolve('./articles/' + dirent)).isDirectory())
-		folders = folders.sort()
-		let articlesFound = folders
-		for (let val of articlesFound) {
-			const jsonPath = path.resolve('./articles/' + val + '/article.json')
-			console.log(jsonPath)
-			let thisArticle = new Promise((resolve, reject) => {
-				let thisArticleReturn
-				fs.readFile(jsonPath, 'utf8', (err, data) => {
-					if (err) {
-						reject(err)
-					} else {
-						thisArticleReturn = JSON.parse(data)
-						thisArticleReturn = processItem(thisArticleReturn)
-						resolve(thisArticleReturn)
-					}
-				})
-			})
-			returnData.push(thisArticle)
-		}
-		returnData = returnData.slice(articlesOffset, articlesOffset + articlesNeeded)
-		writeHome(returnData, res)
-	}) // readdir
-}
-
-async function writeHome(returnArticles, res) { // Separated into a separate function so that the server will wait until all the promises resolve before continuing
-	let newJson = await Promise.all(returnArticles)
-	const filePath = path.resolve('./generated/home.json')
-	fs.writeFile(filePath, JSON.stringify(newJson, null, 2), function (err) {
-		if (err) {
-			throw err
-		} else {
-			res.statusCode = 200
-			fs.createReadStream(filePath).pipe(res)
-		}
+	// Last, get the articles and add them to the bottom
+	let folders = files.filter(dirent => fs.lstatSync(path.resolve('./articles/' + dirent)).isDirectory())
+	folders = folders.sort()
+	let articlesFound = folders
+	for (let val of articlesFound) {
+		const jsonPath = path.resolve('./articles/' + val + '/article.json')
+		console.log(jsonPath)
+		let thisArticle = new Promise((resolve, reject) => {
+			resolve(
+				processItem(
+					JSON.parse(
+						fs.readFileSync(jsonPath, 'utf8')
+					)
+				)
+			)
+		})
+		returnData.push(thisArticle)
+	}
+	returnData = returnData.slice(articlesOffset, articlesOffset + articlesNeeded)
+	await Promise.all(returnData).then(returnArticles => {
+		const filePath = path.resolve('./generated/home.json')
+		fs.writeFile(filePath, JSON.stringify(returnArticles, null, 2), function (err) {
+			if (err) {
+				throw err
+			} else {
+				res.statusCode = 200
+				fs.createReadStream(filePath).pipe(res)
+			}
+		})
 	})
 }
 
