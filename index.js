@@ -33,21 +33,25 @@ const server = http.createServer((req, res) => {
 			console.log('getting favicon')
 			res.statusCode = 200
 			fs.createReadStream(path.resolve('./pages/bruh.png')).pipe(res)
+		} else if (request_segments[1] === 'cause_me_an_error') {
+			apiError("Requested by user", req.url, res)
+		} else if (request_segments[1] === 'im_making_an_error') {
+			clientError("You've made an error!", res)
 		} else if (request_segments[1] === 'api') {
 			if (request_segments[2] === 'article') {
 				getArticle(request_arguments, req, res)
 			} else if (request_segments[2] === 'home') {
-				loadHome(request_arguments, res)
+				loadHome(request_arguments, req, res)
 			} else if (request_segments[2] === 'feedClubs') {
-				loadClubs(request_arguments, res)
+				loadClubs(request_arguments, req, res)
 			} else if (request_segments[2] === 'club') {
 				getClub(request_arguments, req, res)
 			} else if (request_segments[2] === 'search_date') {
-				search_date(request_arguments, res)
+				search_date(request_arguments, req, res)
 			} else if (request_segments[2] === 'weather') {
 				getWeather(res)
 			} else if (request_segments[2] === 'lunch') {
-				getLunch(res)
+				getLunch(req, res)
 			} else {
 				returnError(400, res)
 			}
@@ -85,7 +89,37 @@ async function returnError(errorCode, res) {
 	}
 }
 
-async function loadHome(arguments, res) {
+async function apiError(err, reqUrl = "Unknown", res) {
+	const errorTime = Date.now()
+	const writePath = './errors/' + errorTime + '.json'
+	let errorLog = {
+		"when": errorTime,
+		"request": reqUrl,
+		"err": err
+	}
+	fs.writeFileSync(writePath, JSON.stringify(errorLog, null, 4))
+
+	res.writeHead(500, 'Content-Type', 'application/json')
+	res.end(JSON.stringify(
+		{
+			"itemType": "ServerError",
+			"details": "Something in the API went wrong! Check the errors/ folder."
+		}
+	))
+}
+
+async function clientError(err, res, code = 400) {
+	res.setHeader('Content-Type', 'application/json')
+	res.statusCode = code
+	res.end(JSON.stringify(
+		{
+			"itemType": "ClientError",
+			"details": err
+		}
+	))
+}
+
+async function loadHome(arguments, req, res) {
 	let articlesNeeded = 5
 	let articlesOffset = 0
 	if (arguments["quantity"] != null) {
@@ -113,10 +147,11 @@ async function loadHome(arguments, res) {
 
 	let returnData = []
 	// Get lunch and add it to the top of the list
-	let thisLunch = new Promise((resolve, reject) => {
+	let thisLunch = new Promise((resolve, _) => {
 		fs.readFile('./extras/lunch.json', 'utf8', (err, data) => {
 			if (err) {
-				reject(err)
+				apiError(err, req.url, res)
+				return
 			} else {
 				resolve(JSON.parse(data))
 			}
@@ -164,7 +199,11 @@ async function loadHome(arguments, res) {
 	}
 	returnData = returnData.slice(articlesOffset, articlesOffset + articlesNeeded)
 	await Promise.all(returnData).then(returnArticles => {
-		res.json(returnArticles)
+		res.setHeader('Content-Type', 'application/json')
+		res.statusCode = 200
+		res.end(JSON.stringify(returnArticles))
+	}).catch(err => {
+		apiError("Rejected promise: " + err, req.url, res)
 	})
 }
 
@@ -173,31 +212,33 @@ async function getWeather(res) {
 	fs.createReadStream('./extras/weather.json').pipe(res)
 }
 
-async function getLunch(res) {
-	//  In the future, more than one lunch may be specified in lunch.json with a time range for each.
-	//  So, just directly reading lunch.json shouldn't be done as later on the server will have to figure
-	// out which lunch to return first.
-	fs.readFile('./extras/lunch.json', 'utf8', (err, data) => {
-		if (err) {
-			throw (err)
-		} else {
-			let lunchReturn = JSON.parse(data)
+async function getLunch(req, res) {
+	let data = fs.readFileSync('./extras/lunch.json', 'utf8')
+	let lunchReturn = JSON.parse(data)
 
-			// blah blah blah
+	// blah blah blah
 
-			res.json(lunchReturn)
-		}
-	})
+	res.setHeader('Content-Type', 'application/json')
+	res.statusCode = 200
+	res.end(JSON.stringify(lunchReturn))
 }
 
-async function loadClubs(arguments, res) {
+async function loadClubs(arguments, req, res) {
 	let clubsNeeded = 5
 	let clubsOffset = 0
 	if (arguments["quantity"] != null) {
 		clubsNeeded = parseInt(arguments["quantity"], 10)
+		if (clubsNeeded < 0) {
+			await clientError("Argument quantity must be positive!", res)
+			return
+		}
 	}
 	if (arguments["position"] != null) {
 		clubsOffset = parseInt(arguments["position"], 10)
+		if (clubsOffset < 0) {
+			await clientError("Argument position must be positive!", res)
+			return
+		}
 	}
 	let folders = fs.readdirSync('./clubs').filter(dirent => fs.lstatSync(path.resolve('./clubs/' + dirent)).isDirectory())
 	console.log("BRUH! i need " + clubsNeeded + " clubs here starting from position " + clubsOffset + "!!!")
@@ -224,22 +265,34 @@ async function loadClubs(arguments, res) {
 	}
 	returnClubs = returnClubs.slice(clubsOffset, clubsNeeded + clubsOffset)
 	await Promise.all(returnClubs).then(returnClubs => {
-		res.json(returnClubs)
+		res.setHeader('Content-Type', 'application/json')
+		res.statusCode = 200
+		res.end(JSON.stringify(returnClubs))
+	}).catch(err => {
+		apiError("Rejected promise: " + err, req.url, res)
 	})
 }
 
-async function search_date(queries, res) {
-	let range_start = parseInt(queries["range_start"], 10)
+async function search_date(queries, req, res) {
+	let range_start = 0
 	let range_end
+	if (queries["range_start"] != null) {
+		range_start = parseInt(queries["range_start"], 10)
+	} else {
+		await clientError("Argument range_start is required.", res)
+		return
+	}
 	if (queries["range_end"] != null) {
 		range_end = parseInt(queries["range_end"], 10)
 	} else {
 		range_end = range_start + 86400
 	}
+	if (range_end < range_start) {
+		await clientError("Argument range_end must be after range_start.", res)
+		return
+	}
 	console.log("BRUH! searching for articles between " + range_start + " and " + range_end)
-	if (!range_start) {
-		await returnError(400, res)
-	} else {
+	{
 		if (!range_end) {
 			range_end = range_start + 86400000 // 24 hours in milliseconds
 		}
@@ -270,7 +323,11 @@ async function search_date(queries, res) {
 			let filteredJson = returnArticles.sort(function (a, b) {
 				return a["postedTime"] - b["postedTime"]
 			})
-			res.json(filteredJson)
+			res.setHeader('Content-Type', 'application/json')
+			res.statusCode = 200
+			res.end(JSON.stringify(filteredJson))
+		}).catch(err => {
+			apiError("Rejected promise: " + err, req, res)
 		})
 	}
 }
@@ -288,13 +345,15 @@ async function getArticle(arguments, req, res) {
 	if (fs.existsSync(jsonPath)) {
 		fs.readFile(jsonPath, 'utf8', (err, data) => {
 			if (err) {
-				throw err
+				apiError(err, req, res)
 			}
 			const thisArticle = processItem(JSON.parse(data))
-			res.json(thisArticle)
+			res.setHeader('Content-Type', 'application/json')
+			res.statusCode = 200
+			res.end(JSON.stringify(thisArticle))
 		})
 	} else {
-		await returnError(404, res)
+		await clientError("Article " + requestedArticle + " does not exist or is no longer available.", res, 404)
 	}
 }
 
@@ -306,7 +365,7 @@ async function getClub(arguments, req, res) {
 		requestedClub = parseInt(req.url.split("/")[3], 10)
 	}
 	const clubPath = path.resolve('./clubs/' + requestedClub)
-	console.log("BRUH! request for article " + requestedClub + " which is at " + clubPath)
+	console.log("BRUH! request for club " + requestedClub + " which is at " + clubPath)
 	if (fs.existsSync(path.resolve(clubPath + "/club.json"))) {
 
 		const jsonPath = path.resolve(clubPath + "/club.json")
@@ -315,9 +374,11 @@ async function getClub(arguments, req, res) {
 				throw err
 			}
 			let thisClub = processItem(JSON.parse(data))
-			res.json(thisClub)
+			res.setHeader('Content-Type', 'application/json')
+			res.statusCode = 200
+			res.end(JSON.stringify(thisClub))
 		})
 	} else {
-		await returnError(404, res)
+		await clientError("Club " + requestedClub + " does not exist or is no longer available.", res, 404)
 	}
 }

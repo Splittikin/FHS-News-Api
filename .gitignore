@@ -1,4 +1,5 @@
 /generated/
-/.idea/
 isolate*
 *.log
+/errors/
+/.idea/
