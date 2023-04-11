@@ -33,10 +33,6 @@ const server = http.createServer((req, res) => {
 			console.log('getting favicon')
 			res.statusCode = 200
 			fs.createReadStream(path.resolve('./pages/bruh.png')).pipe(res)
-		} else if (request_segments[1] === 'cause_me_an_error') {
-			apiError("Requested by user", req.url, res)
-		} else if (request_segments[1] === 'im_making_an_error') {
-			clientError("You've made an error!", res)
 		} else if (request_segments[1] === 'api') {
 			if (request_segments[2] === 'article') {
 				getArticle(request_arguments, req, res)
