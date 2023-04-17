@@ -48,6 +48,8 @@ const server = http.createServer((req, res) => {
 				getWeather(res)
 			} else if (request_segments[2] === 'lunch') {
 				getLunch(req, res)
+			} else if (request_segments[2] === 'search') {
+				search_string(request_arguments, req, res)
 			} else {
 				returnError(400, res)
 			}
@@ -119,10 +121,19 @@ async function loadHome(arguments, req, res) {
 	let articlesNeeded = 5
 	let articlesOffset = 0
 	if (arguments["quantity"] != null) {
-		articlesNeeded = arguments["quantity"]
+		if (arguments["quantity"] < 0) {
+			await clientError("Argument quantity must be greater than 0", res)
+			return
+		} else {
+			articlesNeeded = arguments["quantity"]
+		}
 	}
 	if (arguments["position"] != null) {
-		articlesOffset = arguments["position"]
+		if (arguments["position"] < 0) {
+			await clientError("Argument position must be greater than 0", res)
+		} else {
+			articlesOffset = arguments["position"]
+		}
 	}
 	console.log("BRUH! i need " + articlesNeeded + " articles here!!!")
 
@@ -326,6 +337,67 @@ async function search_date(queries, req, res) {
 			apiError("Rejected promise: " + err, req, res)
 		})
 	}
+}
+
+
+async function search_string(arguments, req, res) {
+	let position = 0
+	if (arguments["position"] != null) {
+		position = parseInt(arguments["position"], 10)
+	}
+	let quantity = 5
+	if (arguments["quantity"] != null) {
+		quantity = parseInt(arguments["quantity"], 10)
+	}
+	let query = ""
+	if (arguments["query"] != null) {
+		query = arguments["query"]
+	} else {
+		await clientError("Argument query is required.", res)
+	}
+	query = query.toLowerCase()
+	let folders = fs.readdirSync('./articles').filter(dirent => fs.lstatSync(path.resolve('./articles/' + dirent)).isDirectory())
+	console.log(folders)
+	let filteredFolders = folders.filter(dirent => {
+		let contents = JSON.parse(fs.readFileSync(path.resolve('./articles/'+dirent+'/article.json'), 'utf8'))
+		let isHit = false
+		for (field in contents) {
+			try {
+				if ((typeof contents[field] === 'string' || contents[field] instanceof String) && contents[field].toLowerCase().includes(query)) {
+					isHit = true
+				}
+			} finally {
+
+			}
+		}
+		return isHit
+	}).slice(position, position + quantity)
+	let returnArticles = []
+	console.log(filteredFolders)
+	for (index in filteredFolders) {
+		let folder = filteredFolders[index]
+		console.log(folder)
+		returnArticles.push(new Promise((resolve, reject) => {
+			try {
+				resolve(JSON.parse(fs.readFileSync(path.resolve('./articles/' + folder + '/article.json'))))
+			} catch {
+				reject("Failure fetching article "+folder+" contents")
+			}
+		}))
+	}
+	console.log(returnArticles)
+	await Promise.all(returnArticles).then(returnArticles => {
+		console.log("promise.all")
+		let filteredJson = returnArticles.sort(function (a, b) {
+			return a["postedTime"] - b["postedTime"]
+		})
+		res.setHeader('Content-Type', 'application/json')
+		res.statusCode = 200
+		res.end(JSON.stringify(filteredJson))
+	}).catch(err => {
+		apiError("Rejected promise: " + err, req, res)
+	})
+	console.log("finish")
 }
 
 async function getArticle(arguments, req, res) {
