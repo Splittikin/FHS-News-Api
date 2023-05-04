@@ -1,5 +1,5 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=~/api-public
+    - export DEPLOYPATH=/home/fhsnzrgr/api-public
     - /bin/cp -R ./* $DEPLOYPATH
