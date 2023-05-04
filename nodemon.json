@@ -1,0 +1,7 @@
+{
+  "comment": "Any files/folders you place here will be watched for changes. The app will restart if any are found",
+  "watch": [
+    "config.json",
+    "index.js"
+  ]
+}
