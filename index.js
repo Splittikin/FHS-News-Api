@@ -207,6 +207,7 @@ async function loadHome(arguments, req, res) {
 	returnData = returnData.slice(articlesOffset, articlesOffset + articlesNeeded)
 	await Promise.all(returnData).then(returnArticles => {
 		res.setHeader('Content-Type', 'application/json')
+		res.setHeader('Access-Control-Allow-Origin', '*')
 		res.statusCode = 200
 		res.end(JSON.stringify(returnArticles))
 	}).catch(err => {
