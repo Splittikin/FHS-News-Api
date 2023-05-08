@@ -2,4 +2,12 @@
 deployment:
   tasks:
     - export DEPLOYPATH=/home/fhsnzrgr/api-public
-    - /bin/cp -R ./* $DEPLOYPATH
+    - /bin/scp -R alerts/ $DEPLOYPATH
+    - /bin/scp -R articles/ $DEPLOYPATH
+    - /bin/scp -R clubs/ $DEPLOYPATH
+    - /bin/scp -R extras/ $DEPLOYPATH
+    - /bin/scp -R pages/ $DEPLOYPATH
+    - /bin/scp -R cpanel_start.js $DEPLOYPATH
+    - /bin/scp -R index.js $DEPLOYPATH
+    - /bin/scp -R nodemon.json $DEPLOYPATH
+    - /bin/scp -R package.json $DEPLOYPATH
