@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/fhsnzrgr/api-development
+    - export DEPLOYPATH=/home/fhsnzrgr/api-developmentx
     - /usr/bin/scp -r alerts/ $DEPLOYPATH
     - /usr/bin/scp -r articles/ $DEPLOYPATH
     - /usr/bin/scp -r clubs/ $DEPLOYPATH
@@ -11,3 +11,4 @@ deployment:
     - /usr/bin/scp index.js $DEPLOYPATH
     - /usr/bin/scp nodemon.json $DEPLOYPATH
     - /usr/bin/scp package.json $DEPLOYPATH
+    - touch $DEPLOYPATH/tmp/restart.txt
