@@ -1,7 +1,7 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/fhsnzrgr/api-developmentx
+    - export DEPLOYPATH=/home/fhsnzrgr/api-development
     - /usr/bin/scp -r alerts/ $DEPLOYPATH
     - /usr/bin/scp -r articles/ $DEPLOYPATH
     - /usr/bin/scp -r clubs/ $DEPLOYPATH
