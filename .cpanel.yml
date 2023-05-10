@@ -11,3 +11,4 @@ deployment:
     - /usr/bin/scp index.js $DEPLOYPATH
     - /usr/bin/scp nodemon.json $DEPLOYPATH
     - /usr/bin/scp package.json $DEPLOYPATH
+    - touch $DEPLOYPATH/tmp/restart.txt
